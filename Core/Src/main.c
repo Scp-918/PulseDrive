@@ -130,31 +130,41 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_HRTIM1_Init();
-  MX_I2C3_Init();
-  MX_SPI1_Init();
+  // MX_HRTIM1_Init();
+  // MX_I2C3_Init();
+  // MX_SPI1_Init();
   MX_SPI3_Init();
-  MX_USART1_UART_Init();
+  // MX_USART1_UART_Init();
   MX_USB_Device_Init();
-  /* USER CODE BEGIN 2 */
-// [新增] 1. 使能 E5V (PE7)
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
+/* USER CODE BEGIN 2 */
+  // 1. 电源上电序列
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET); // E5V
   HAL_Delay(50); 
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET); // E3.3V
+  HAL_Delay(50); 
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET); // E4V
+  HAL_Delay(50); 
+  HAL_Delay(5000);//为ADC留时间
+
+  char msg[64];
+  // NOTE: 不直接调用 AD4007_GPIO_Init()，该函数在 AD4007.c 中被声明为 static（文件作用域），
+  // 因此不能在其他源文件中调用。AD4007_Init_Safe() 会在内部调用 GPIO 初始化以保证正确顺序。
+  // AD4007_GPIO_Init(); // 已移除，若需要公开此初始化函数，请在 AD4007.c 中移除 `static` 并在 AD4007.h 中添加声明。
+  // 2. 尝试初始化 ADC，但不卡死
+  if (AD4007_Init_Safe() == HAL_OK)
+  {
+      strcpy(msg, "AD4007 Init Success!\r\n");
+  }
+  else
+  {
+      strcpy(msg, "AD4007 Init FAILED! (Check Power/SPI)\r\n");
+  }
   
-  // [新增] 2. 使能 E3.3V (PE8)
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);
-  HAL_Delay(50); 
+  // 发送初始化结果
+  // 注意：此时USB可能刚初始化完，延时一下确保PC端能接收
+  HAL_Delay(1000); 
+  CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
 
-  // [新增] 3. 使能 E4V (PE10)
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET);
-  HAL_Delay(50); 
-
-  // --- 2. AD4007 初始化 (配置 CNV 引脚) ---
-  AD4007_Init_Manual();
-
-  // [修改] 更新了提示信息，确认电源序列完成
-  char msg[128];
-  char *msg2 = "Power Sequence OK. Hello world\r\n";
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -164,18 +174,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // 1. 读取数据
-    int32_t adc_code = 0;
-    adc_code = AD4007_Read_Single();
+    // 读取数据
+    int32_t code = AD4007_Read_Single();
+    float voltage = AD4007_ConvertToVoltage(code);
     
-    // 2. 转换电压
-    float voltage = AD4007_ConvertToVoltage(adc_code);
-
-    // 3. 打印输出
-    sprintf(msg, "ADC Raw: 0x%05lX, Val: %ld, Volt: %.2f V\r\n", (unsigned long)(adc_code & 0x3FFFF), (long)adc_code, voltage);
-    // 发送第一条消息，并在此处等待其成功/非忙碌状态
-    CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));    // 发送第二条消息（只有第一条发送完成后才会执行到这里）
-    CDC_Transmit_Wait((uint8_t*)msg2,strlen(msg2));
+    // 打印数据 (Hex码 和 电压值)
+    // 注意：如果浮点打印卡死，请先只打印整数 code
+    sprintf(msg, "ADC: 0x%05lX, %.4f V\r\n", code, voltage);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    
     HAL_Delay(1000);
   }
   /* USER CODE END 3 */
