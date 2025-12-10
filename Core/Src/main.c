@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "usbd_cdc_if.h" // [添加 1] 引入CDC接口头文件，用于调用 CDC_Transmit_FS
+#include <string.h>      // [添加 1] 用于 strlen 函数
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -107,7 +108,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
-
+  char *msg = "hello world vscode\r\n"; // 添加 \r\n 以便上位机串口助手换行显示
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -115,7 +116,10 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg)); 
+    
+    // 延时 1000ms
+    HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
