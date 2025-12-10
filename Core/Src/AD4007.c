@@ -144,3 +144,38 @@ float AD4007_ConvertToVoltage(int32_t code)
 {
     return ((float)code * AD4007_VREF) / 131072.0f;
 }
+
+/* 读取函数：假设 CNV 已经由 HRTIM 触发并完成转换 */
+int32_t AD4007_Read_SPI_Only(void)
+{
+    uint8_t rx_data[3] = {0};
+    uint8_t tx_dummy[3] = {0xFF, 0xFF, 0xFF}; // 发送全1保持 MOSI 高电平 (SDI=1 -> CS Mode)
+    int32_t adc_val = 0;
+
+    // 直接进行 SPI 传输读取 24 位
+    // 注意：这里不需要操作 GPIO_PIN_9 (CNV)，因为它正被 HRTIM 控制
+    // 确保此时 CNV 为高（HRTIM 脉冲极短，读取时已经是高电平了）
+    
+    if (HAL_SPI_TransmitReceive(&hspi3, tx_dummy, rx_data, 3, 2) != HAL_OK)
+    {
+        return 0;
+    }
+
+    // 数据解码 (AD4007 18-bit, 补码)
+    uint32_t raw = ((uint32_t)rx_data[0] << 16) | ((uint32_t)rx_data[1] << 8) | rx_data[2];
+    
+    // 对齐处理
+    raw = raw >> 6; 
+    raw &= 0x3FFFF;
+
+    if (raw & 0x20000) 
+    {
+        adc_val = raw | 0xFFFC0000; // 符号扩展
+    }
+    else
+    {
+        adc_val = raw;
+    }
+
+    return adc_val;
+}
