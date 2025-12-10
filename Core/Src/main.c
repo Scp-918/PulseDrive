@@ -208,17 +208,27 @@ int main(void)
       strcpy(msg, "System Ready: AD4007 FAIL\r\n");
   }
   HAL_Delay(1000); // 等待USB连接稳定
-  CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+  CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+
+  // 3. 初始读取一次 ADC，验证功能
+  int32_t code = AD4007_Read_Single();
+  float voltage = AD4007_ConvertToVoltage(code);
+  sprintf(msg, "ADC:%.4f V\r\n", voltage);
+  CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
 
   // [静态配置]
   // KH: 常态连接 S3 (Channel 3: A2=0, A1=1, A0=0)
   TMUX_KH_SetChannel(TMUX_CH_S2);
-  
   // KL: 常态连接 S2 (Channel 2: A2=0, A1=0, A0=1)
   TMUX_KL_SetChannel(TMUX_CH_S3);
-  
   // KB: 初始状态设为断开
   TMUX_KB_SetChannel(TMUX_CH_S7);
+
+  // 发送成功消息
+  sprintf(msg, "TMUX SUCCESS\r\n");
+  CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+
+
   MX_HRTIM1_Init();
   // 开启中断
   HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
@@ -253,11 +263,13 @@ int main(void)
           float v_300us = AD4007_ConvertToVoltage(adc_raw_300us);
           
           sprintf(msg, "T=3us: %.4f V | T=300us: %.4f V\r\n", v_3us, v_300us);
-          CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+          CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
       }
 
       // 确保循环周期至少 10ms
-      HAL_Delay(10);
+      sprintf(msg, "TMUX SUCCESS222\r\n");
+      CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+      HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

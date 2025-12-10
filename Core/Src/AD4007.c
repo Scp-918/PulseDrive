@@ -30,7 +30,7 @@ HAL_StatusTypeDef AD4007_Init_Safe(void)
     uint8_t rx_buffer[3] = {0};
     uint8_t tx_dummy[3] = {0xFF, 0xFF, 0xFF}; // 发送全1，确保 MOSI 为高
     uint8_t retry_count = 0;
-    const uint8_t MAX_RETRIES = 20;
+    const uint8_t MAX_RETRIES = 200;
 
     AD4007_GPIO_Init();
 
