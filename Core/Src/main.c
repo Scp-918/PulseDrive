@@ -108,7 +108,20 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
-  char *msg = "hello world vscode\r\n"; // 添加 \r\n 以便上位机串口助手换行显示
+// [新增] 1. 使能 E5V (PE7)
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
+  HAL_Delay(50); 
+  
+  // [新增] 2. 使能 E3.3V (PE8)
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);
+  HAL_Delay(50); 
+
+  // [新增] 3. 使能 E4V (PE10)
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET);
+  HAL_Delay(50); 
+
+  // [修改] 更新了提示信息，确认电源序列完成
+  char *msg = "Power Sequence OK. Hello world vscode\r\n";
   /* USER CODE END 2 */
 
   /* Infinite loop */
