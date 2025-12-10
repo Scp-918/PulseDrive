@@ -131,13 +131,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  // MX_HRTIM1_Init();
-  // MX_I2C3_Init();
-  // MX_SPI1_Init();
+  MX_HRTIM1_Init();
+  MX_I2C3_Init();
+  MX_SPI1_Init();
   MX_SPI3_Init();
-  // MX_USART1_UART_Init();
+  MX_USART1_UART_Init();
   MX_USB_Device_Init();
-/* USER CODE BEGIN 2 */
+  /* USER CODE BEGIN 2 */
   // [初始化] TMUX GPIO (确保 PA8 等引脚被正确配置为输出)
   TMUX_Global_Init();
 
@@ -172,16 +172,10 @@ int main(void)
   
   /* USER CODE END 2 */
 
-  // 定义时间戳和状态变量
-  uint32_t last_kb_tick = 0;
-  uint32_t last_adc_tick = 0;
-  
-  // KB 状态: 0 -> Disabled (EN=0), 1 -> Enabled (EN=1, S7)
-  uint8_t kb_enable_state = 0;
-
+  /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
-  {
+  {   
       uint32_t current_tick = HAL_GetTick();
 
       // [任务1] KB EN_BRIDGE 信号每 1000ms 切换
@@ -228,6 +222,10 @@ int main(void)
       
       // 简单防死循环延时
       HAL_Delay(50); 
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+
   }
   /* USER CODE END 3 */
 }
