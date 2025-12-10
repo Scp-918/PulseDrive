@@ -23,7 +23,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "usbd_cdc_if.h" // [添加 1] 引入CDC接口头文件，用于调用 CDC_Transmit_FS
+#include "AD4007.h"      // [新增] 引入 AD4007 模块
 #include <string.h>      // [添加 1] 用于 strlen 函数
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -120,8 +122,12 @@ int main(void)
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET);
   HAL_Delay(50); 
 
+  // --- 2. AD4007 初始化 (配置 CNV 引脚) ---
+  AD4007_Init_Manual();
+
   // [修改] 更新了提示信息，确认电源序列完成
-  char *msg = "Power Sequence OK. Hello world vscode\r\n";
+  char msg[128];
+  char *msg2 = "Power Sequence OK. Hello world vscode\r\n";
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,9 +135,17 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    CDC_Transmit_FS((uint8_t*)msg, strlen(msg)); 
+    // 1. 读取数据
+    int32_t adc_code = AD4007_Read_Single();
     
-    // 延时 1000ms
+    // 2. 转换电压
+    float voltage = AD4007_ConvertToVoltage(adc_code);
+
+    // 3. 打印输出
+    sprintf(msg, "ADC Raw: 0x%05lX, Val: %ld, Volt: %.4f V\r\n", adc_code & 0x3FFFF, adc_code, voltage);
+    CDC_Transmit_FS((uint8_t*)msg, strlen(msg));
+    CDC_Transmit_FS((uint8_t*)msg2, strlen(msg2));
+    // 4. 延时 1 秒
     HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
