@@ -54,14 +54,14 @@ void TMUX_Global_Init(void)
   */
 void TMUX_KB_SetChannel(TMUX_Channel_t channel)
 {
-    [cite_start]// KB Enable Pin: PA8 [cite: 1691]
+    // KB Enable Pin: PA8 [cite: 1691]
     if (channel == TMUX_CH_NONE)
     {
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // Disable (所有开关断开)
         return;
     }
 
-    [cite_start]// 设置地址线: S7对应 A2=1, A1=1, A0=0 [cite: 1172]
+    // 设置地址线: S7对应 A2=1, A1=1, A0=0 [cite: 1172]
     // A0: PB15, A1: PC6, A2: PC7
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, (channel & 0x01) ? GPIO_PIN_SET : GPIO_PIN_RESET);
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,  (channel & 0x02) ? GPIO_PIN_SET : GPIO_PIN_RESET);

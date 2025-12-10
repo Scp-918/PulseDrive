@@ -162,10 +162,10 @@ int main(void)
 
   // [静态配置]
   // KH: 常态连接 S3 (Channel 3: A2=0, A1=1, A0=0)
-  TMUX_KH_SetChannel(TMUX_CH_S3);
+  TMUX_KH_SetChannel(TMUX_CH_S2);
   
   // KL: 常态连接 S2 (Channel 2: A2=0, A1=0, A0=1)
-  TMUX_KL_SetChannel(TMUX_CH_S2);
+  TMUX_KL_SetChannel(TMUX_CH_S3);
   
   // KB: 初始状态设为断开
   TMUX_KB_SetChannel(TMUX_CH_NONE);
@@ -227,7 +227,7 @@ int main(void)
       }
       
       // 简单防死循环延时
-      HAL_Delay(1); 
+      HAL_Delay(50); 
   }
   /* USER CODE END 3 */
 }
