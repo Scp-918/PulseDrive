@@ -57,11 +57,47 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+uint8_t CDC_Transmit_Wait(uint8_t* Buf, uint16_t Len); // [新增] 阻塞式发送原型
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define US_DELAY_COUNT 2400
+static void Delay_us_50(void)
+{
+    // 使用 volatile 和 __NOP() 确保编译器不会优化掉循环，以实现准确的忙等。
+    for (volatile uint32_t i = 0; i < US_DELAY_COUNT; i++)
+    {
+        __NOP();
+    }
+}
+
+
+/**
+  * @brief  阻塞式 CDC 发送函数，直到 USB 缓冲区空闲并接受数据为止
+  * @param  Buf: 待发送数据缓冲区
+  * @param  Len: 数据长度
+  * @retval USBD_StatusTypeDef 状态 (USBD_OK, USBD_FAIL 等)
+  */
+uint8_t CDC_Transmit_Wait(uint8_t* Buf, uint16_t Len)
+{
+    uint8_t status;
+    do 
+    {
+        // 尝试将数据提交给 USB 硬件
+        status = CDC_Transmit_FS(Buf, Len);
+        
+        // 如果 USB 忙碌，执行 50us 忙等
+        if (status == USBD_BUSY) 
+        {
+            // [修改] 使用 50us 忙等代替 HAL_Delay(1)
+            Delay_us_50(); 
+        }
+        
+    } while (status == USBD_BUSY); // 一直重试，直到不是忙碌状态
+    
+    return status;
+}
 
 /* USER CODE END 0 */
 
@@ -114,7 +150,7 @@ int main(void)
   HAL_Delay(50); 
 
   // --- 2. AD4007 初始化 (配置 CNV 引脚) ---
-  // AD4007_Init_Manual();
+  AD4007_Init_Manual();
 
   // [修改] 更新了提示信息，确认电源序列完成
   char msg[128];
@@ -128,7 +164,18 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    CDC_Transmit_FS((uint8_t*)msg2,strlen(msg2)); //调试信息发送
+    // 1. 读取数据
+    int32_t adc_code = 0;
+    adc_code = AD4007_Read_Single();
+    
+    // 2. 转换电压
+    float voltage = AD4007_ConvertToVoltage(adc_code);
+
+    // 3. 打印输出
+    sprintf(msg, "ADC Raw: 0x%05lX, Val: %ld, Volt: %.2f V\r\n", (unsigned long)(adc_code & 0x3FFFF), (long)adc_code, voltage);
+    // 发送第一条消息，并在此处等待其成功/非忙碌状态
+    CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));    // 发送第二条消息（只有第一条发送完成后才会执行到这里）
+    CDC_Transmit_Wait((uint8_t*)msg2,strlen(msg2));
     HAL_Delay(1000);
   }
   /* USER CODE END 3 */
