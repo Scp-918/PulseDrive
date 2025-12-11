@@ -167,5 +167,18 @@ void HAL_HRTIM_MspDeInit(HRTIM_HandleTypeDef* hrtimHandle)
 }
 
 /* USER CODE BEGIN 1 */
+void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hrtimHandle)
+{
+  if(hrtimHandle->Instance==HRTIM1)
+  {
+  /* USER CODE BEGIN HRTIM1_MspInit 0 */
 
+  /* USER CODE END HRTIM1_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_HRTIM1_CLK_ENABLE(); // <--- 关键：开启 HRTIM 时钟
+  /* USER CODE BEGIN HRTIM1_MspInit 1 */
+
+  /* USER CODE END HRTIM1_MspInit 1 */
+  }
+}
 /* USER CODE END 1 */

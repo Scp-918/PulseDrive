@@ -59,26 +59,26 @@ volatile uint8_t measure_done = 0;
 /* USER CODE BEGIN PV */
 void HAL_HRTIM_TimerCompareCallback(HRTIM_HandleTypeDef * hhrtim, uint32_t TimerIdx)
 {
-  if (TimerIdx == HRTIM_TIMERINDEX_TIMER_A)
-  {
-    // 获取当前中断标志 
-    static uint8_t sample_index = 0;
+  // if (TimerIdx == HRTIM_TIMERINDEX_TIMER_A)
+  // {
+  //   // 获取当前中断标志 
+  //   static uint8_t sample_index = 0;
     
-    // 简单的状态机：每次启动设为 0，第一次中断是 3us，第二次是 300us
-    if (sample_index == 0) 
-    {
-        // 对应 CMP2 (3.5us) 触发
-        adc_raw_3us = AD4007_Read_SPI_Only();
-        sample_index = 1;
-    }
-    else
-    {
-        // 对应 CMP4 (300.5us) 触发
-        adc_raw_300us = AD4007_Read_SPI_Only();
-        sample_index = 0; // 重置
-        measure_done = 1; // 标记本轮完成
-    }
-  }
+  //   // 简单的状态机：每次启动设为 0，第一次中断是 3us，第二次是 300us
+  //   if (sample_index == 0) 
+  //   {
+  //       // 对应 CMP2 (3.5us) 触发
+  //       adc_raw_3us = AD4007_Read_SPI_Only();
+  //       sample_index = 1;
+  //   }
+  //   else
+  //   {
+  //       // 对应 CMP4 (300.5us) 触发
+  //       adc_raw_300us = AD4007_Read_SPI_Only();
+  //       sample_index = 0; // 重置
+  //       measure_done = 1; // 标记本轮完成
+  //   }
+  // }
 }
 
 /* 更好的方式是直接重写特定的 Event 回调如果 HAL 支持，或者检查 SR 寄存器 */
@@ -116,22 +116,39 @@ static void Delay_us_50(void)
   * @param  Len: 数据长度
   * @retval USBD_StatusTypeDef 状态 (USBD_OK, USBD_FAIL 等)
   */
+// uint8_t CDC_Transmit_Wait(uint8_t* Buf, uint16_t Len)
+// {
+//     uint8_t status;
+//     do 
+//     {
+//         // 尝试将数据提交给 USB 硬件
+//         status = CDC_Transmit_FS(Buf, Len);
+        
+//         // 如果 USB 忙碌，执行 50us 忙等
+//         if (status == USBD_BUSY) 
+//         {
+//             // [修改] 使用 50us 忙等代替 HAL_Delay(1)
+//             Delay_us_50(); 
+//         }
+        
+//     } while (status == USBD_BUSY); // 一直重试，直到不是忙碌状态
+    
+//     return status;
+// }
 uint8_t CDC_Transmit_Wait(uint8_t* Buf, uint16_t Len)
 {
     uint8_t status;
+    uint32_t timeout = 20000; // 约 1秒超时 (20000 * 50us)
+    
     do 
     {
-        // 尝试将数据提交给 USB 硬件
         status = CDC_Transmit_FS(Buf, Len);
-        
-        // 如果 USB 忙碌，执行 50us 忙等
         if (status == USBD_BUSY) 
         {
-            // [修改] 使用 50us 忙等代替 HAL_Delay(1)
             Delay_us_50(); 
+            if (--timeout == 0) return USBD_BUSY; // 超时退出，避免死锁
         }
-        
-    } while (status == USBD_BUSY); // 一直重试，直到不是忙碌状态
+    } while (status == USBD_BUSY);
     
     return status;
 }
@@ -217,8 +234,8 @@ int main(void)
 
   MX_HRTIM1_Init();
   // 开启中断
-  // HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
-  // HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
+  HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
   uint32_t last_print_tick = 0;
   /* USER CODE END 2 */
 
@@ -226,8 +243,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {   
-    uint32_t current_tick = HAL_GetTick();
-    // [核心循环] 每 10ms 触发一次高精度序列
+      uint32_t current_tick = HAL_GetTick();
+      // [核心循环] 每 10ms 触发一次高精度序列
       // 序列：EN高 -> 3us采样 -> 300us采样 -> EN低(自动)
       
       // 1. 清除上一次的状态/标志
@@ -240,22 +257,22 @@ int main(void)
       // 3. 等待本轮测量完成 (350us 内)
       // 实际应用中可以去处理其他事情，这里简单延时确保不重入
       
-      // [打印任务] 每 1000ms 打印一次最近的数据
-      if (current_tick - last_print_tick >= 1000)
-      {
-          last_print_tick = current_tick;
+      // // [打印任务] 每 1000ms 打印一次最近的数据
+      // if (current_tick - last_print_tick >= 1000)
+      // {
+      //     last_print_tick = current_tick;
           
-          float v_3us = AD4007_ConvertToVoltage(adc_raw_3us);
-          float v_300us = AD4007_ConvertToVoltage(adc_raw_300us);
+      //     float v_3us = AD4007_ConvertToVoltage(adc_raw_3us);
+      //     float v_300us = AD4007_ConvertToVoltage(adc_raw_300us);
           
-          sprintf(msg, "T=3us: %.4f V | T=300us: %.4f V\r\n", v_3us, v_300us);
-          CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
-      }
+      //     sprintf(msg, "T=3us: %.4f V | T=300us: %.4f V\r\n", v_3us, v_300us);
+      //     CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+      // }
 
       // 确保循环周期至少 10ms
       sprintf(msg, "TMUX SUCCESS222\r\n");
       CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
-      HAL_Delay(100);
+      HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
