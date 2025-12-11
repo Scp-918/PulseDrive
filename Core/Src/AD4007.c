@@ -149,28 +149,56 @@ float AD4007_ConvertToVoltage(int32_t code)
 int32_t AD4007_Read_SPI_Only(void)
 {
     uint8_t rx_data[3] = {0};
-    uint8_t tx_dummy[3] = {0xFF, 0xFF, 0xFF}; // 发送全1保持 MOSI 高电平 (SDI=1 -> CS Mode)
     int32_t adc_val = 0;
-
-    // 直接进行 SPI 传输读取 24 位
-    // 注意：这里不需要操作 GPIO_PIN_9 (CNV)，因为它正被 HRTIM 控制
-    // 确保此时 CNV 为高（HRTIM 脉冲极短，读取时已经是高电平了）
     
-    if (HAL_SPI_TransmitReceive(&hspi3, tx_dummy, rx_data, 3, 2) != HAL_OK)
+    // 获取 SPI3 的寄存器基地址 (根据你的代码是 hspi3)
+    SPI_TypeDef *SPIx = hspi3.Instance; 
+
+    // 1. 确保 SPI 已使能
+    if((SPIx->CR1 & SPI_CR1_SPE) != SPI_CR1_SPE)
     {
-        return 0;
+        __HAL_SPI_ENABLE(&hspi3);
     }
 
-    // 数据解码 (AD4007 18-bit, 补码)
+    // 2. 快速读写 3 个字节 (直接操作 DR 寄存器)
+    for (int i = 0; i < 3; i++)
+    {
+        // --- 发送阶段 ---
+        // 等待发送缓冲区为空 (TXE)
+        // 添加简单的倒计数防止硬件故障导致死循环
+        uint32_t timeout = 5000; 
+        while ((SPIx->SR & SPI_FLAG_TXE) == RESET) 
+        {
+            if (--timeout == 0) return 0; // 超时退出
+        }
+        
+        // 发送 0xFF (Dummy Byte) 以维持 MOSI 高电平
+        // 强制转换为 8位 指针写入 DR
+        *((volatile uint8_t *)&SPIx->DR) = 0xFF;
+
+        // --- 接收阶段 ---
+        // 等待接收缓冲区非空 (RXNE)
+        timeout = 5000;
+        while ((SPIx->SR & SPI_FLAG_RXNE) == RESET) 
+        {
+            if (--timeout == 0) return 0;
+        }
+
+        // 读取数据
+        rx_data[i] = *((volatile uint8_t *)&SPIx->DR);
+    }
+
+    // 3. 数据拼接与解码 (AD4007 18-bit 补码)
     uint32_t raw = ((uint32_t)rx_data[0] << 16) | ((uint32_t)rx_data[1] << 8) | rx_data[2];
     
-    // 对齐处理
+    // 对齐处理：18位数据通常在 24bit 的高位，需要右移 6 位
     raw = raw >> 6; 
     raw &= 0x3FFFF;
 
+    // 符号扩展处理
     if (raw & 0x20000) 
     {
-        adc_val = raw | 0xFFFC0000; // 符号扩展
+        adc_val = raw | 0xFFFC0000;
     }
     else
     {

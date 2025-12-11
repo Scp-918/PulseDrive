@@ -61,16 +61,7 @@ void HAL_HRTIM_TimerCompareCallback(HRTIM_HandleTypeDef * hhrtim, uint32_t Timer
 {
   if (TimerIdx == HRTIM_TIMERINDEX_TIMER_A)
   {
-    // 获取当前中断标志
-    // 注意：HAL库可能在调用回调前清除标志，这里通过逻辑判断顺序
-    // 但因为 CMP2 和 CMP4 间隔很远 (300us)，一般不会冲突。
-    
-    // 这里我们简化处理：利用计数器值或状态判断，或者直接读取。
-    // 由于 HAL 回调不传具体是哪个 CMP 触发，我们需要在函数里判断或分别使能不同回调。
-    // 标准 HAL_HRTIM_IRQHandler 会调用 HAL_HRTIM_TimerCompareCallback。
-    // 我们可以检查 TimerA 的状态，但最简单的方法是使用具体的中断处理函数覆盖 weak 定义，
-    // 或者利用时间差。由于 3us 和 300us 区分明显，我们可以用一个状态机。
-    
+    // 获取当前中断标志 
     static uint8_t sample_index = 0;
     
     // 简单的状态机：每次启动设为 0，第一次中断是 3us，第二次是 300us
@@ -91,16 +82,11 @@ void HAL_HRTIM_TimerCompareCallback(HRTIM_HandleTypeDef * hhrtim, uint32_t Timer
 }
 
 /* 更好的方式是直接重写特定的 Event 回调如果 HAL 支持，或者检查 SR 寄存器 */
-/* 为了确保稳健，我们在启动 HRTIM 前重置 sample_index */
+/* 为了确保稳健，在启动 HRTIM 前重置 sample_index */
 void HRTIM_Reset_State(void)
 {
-    // [修正3] 使用 __HAL_HRTIM_TIMER_CLEAR_IT 清除中断标志位 (也即清除状态位)
     // 参数：Handle, TimerIdx, InterruptFlag
     __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_CMP4);
-    
-    // 如果需要清除普通的 FLAG 而不是 IT，在 G4 上通常直接操作寄存器最快：
-    // hhrtim1.Instance->sTimerxRegs[HRTIM_TIMERINDEX_TIMER_A].ICR = (HRTIM_TIM_FLAG_CMP2 | HRTIM_TIM_FLAG_CMP4);
-    // 但上面的 CLEAR_IT 宏实际上就是写 ICR，所以是正确的。
 }
 
 /* USER CODE END PV */
@@ -231,8 +217,8 @@ int main(void)
 
   MX_HRTIM1_Init();
   // 开启中断
-  HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
+  // HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
+  // HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
   uint32_t last_print_tick = 0;
   /* USER CODE END 2 */
 
