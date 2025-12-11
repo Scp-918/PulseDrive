@@ -41,6 +41,7 @@ void MX_HRTIM1_Init(void)
   {
     Error_Handler();
   }
+  // DLL 校准 (必须保留)
   if (HAL_HRTIM_DLLCalibrationStart(&hhrtim1, HRTIM_CALIBRATIONRATE_3) != HAL_OK)
   {
     Error_Handler();
@@ -50,22 +51,21 @@ void MX_HRTIM1_Init(void)
     Error_Handler();
   }
 
-  // --- Timer A 时基配置 ---
-  // 使用 DIV1 (144MHz)，解决 MUL32 溢出问题
-  // 1 tick = 6.94ns. Period = 350us -> 50400 ticks.
-  pTimeBaseCfg.Period = 50400;
+  // --- 1. 时基配置 (Time Base) ---
+  // 将周期设为 300.5us (43272 ticks)
+  // 这样 300.5us 时会自动产生 PER 事件，用于复位引脚
+  pTimeBaseCfg.Period = 43272; 
   pTimeBaseCfg.RepetitionCounter = 0x00;
-  // [修正1] 使用 DIV1 宏
-  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_DIV1; 
+  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_DIV1; // 144MHz
   pTimeBaseCfg.Mode = HRTIM_MODE_SINGLESHOT_RETRIGGERABLE;
-  
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, &pTimeBaseCfg) != HAL_OK)
   {
     Error_Handler();
   }
 
-  // Timer 配置
-  pTimerCfg.InterruptRequests = HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_CMP4;
+  // --- 2. Timer 配置 ---
+  // 启用 CMP2 (3.5us) 和 REP/PER (300.5us) 中断
+  pTimerCfg.InterruptRequests = HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_REP; 
   pTimerCfg.DMARequests = HRTIM_TIM_DMA_NONE;
   pTimerCfg.PushPull = HRTIM_TIMPUSHPULLMODE_DISABLED;
   pTimerCfg.FaultEnable = HRTIM_TIMFAULTENABLE_NONE;
@@ -80,40 +80,52 @@ void MX_HRTIM1_Init(void)
     Error_Handler();
   }
 
-  // --- 比较单元 (144MHz 时基) ---
-  // CMP1: 3us (Enable CNV) -> 432 ticks
+  // --- 3. 比较单元配置 (Event Set) ---
+  
+  // CMP1: 3us (CNV 第1次上升)
   pCompareCfg.CompareValue = 432;
   HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, &pCompareCfg);
 
-  // CMP2: 3.5us (Read ADC) -> 504 ticks
+  // CMP2: 3.5us (CNV 第1次下降)
   pCompareCfg.CompareValue = 504;
   HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_2, &pCompareCfg);
 
-  // CMP3: 300us (Enable CNV 2nd) -> 43200 ticks
+  // CMP3: 300us (CNV 第2次上升)
   pCompareCfg.CompareValue = 43200;
   HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_3, &pCompareCfg);
 
-  // CMP4: 300.5us (Read ADC 2nd) -> 43272 ticks
-  pCompareCfg.CompareValue = 43272;
+  // CMP4: 0.14us (EN 开始上升) -> 设为 20 ticks
+  // 用来在计时刚开始时立刻拉高 EN
+  pCompareCfg.CompareValue = 20; 
   HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_4, &pCompareCfg);
 
-  // --- 输出配置 ---
+  // --- 4. 输出配置 (核心逻辑) ---
 
-  // TA1 (PA8 - EN_BRIDGE)
+  // TA1 (EN_BRIDGE): 
+  // Set: CMP4 (0.14us)
+  // Reset: PER (300.5us 周期结束)
   pOutputCfg.Polarity = HRTIM_OUTPUTPOLARITY_HIGH;
-  pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMPER; // Start (Period/Reset event usually works as Start in SingleShot if retrigger)
-  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP4; // 300us 结束时关断
-  pOutputCfg.IdleMode = HRTIM_OUTPUTIDLEMODE_NONE; 
+  pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMCMP4; 
+  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMPER; 
+  pOutputCfg.IdleMode = HRTIM_OUTPUTIDLEMODE_NONE;
   pOutputCfg.IdleLevel = HRTIM_OUTPUTIDLELEVEL_INACTIVE;
   pOutputCfg.FaultLevel = HRTIM_OUTPUTFAULTLEVEL_NONE;
   pOutputCfg.ChopperModeEnable = HRTIM_OUTPUTCHOPPERMODE_DISABLED;
   pOutputCfg.BurstModeEntryDelayed = HRTIM_OUTPUTBURSTMODEENTRY_REGULAR;
-  HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA1, &pOutputCfg);
+  if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA1, &pOutputCfg) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-  // TA2 (CNV)
+  // TA2 (CNV): 
+  // Set: CMP1 (3us) 或 CMP3 (300us)
+  // Reset: CMP2 (3.5us) 或 PER (300.5us 周期结束)
   pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMCMP1 | HRTIM_OUTPUTSET_TIMCMP3;
-  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP2 | HRTIM_OUTPUTRESET_TIMCMP4;
-  HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA2, &pOutputCfg);
+  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP2 | HRTIM_OUTPUTRESET_TIMPER;
+  if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA2, &pOutputCfg) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   HAL_HRTIM_MspPostInit(&hhrtim1);
 }

@@ -233,9 +233,15 @@ int main(void)
 
 
   MX_HRTIM1_Init();
+  if (HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TA2) != HAL_OK)
+  {
+    Error_Handler();
+    sprintf(msg, "wrong\r\n");
+    CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+  }
   // 开启中断
-  HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
+  // HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 1, 0);
+  // HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
   uint32_t last_print_tick = 0;
   /* USER CODE END 2 */
 
@@ -247,13 +253,11 @@ int main(void)
       // [核心循环] 每 10ms 触发一次高精度序列
       // 序列：EN高 -> 3us采样 -> 300us采样 -> EN低(自动)
       
-      // 1. 清除上一次的状态/标志
-      HRTIM_Reset_State();
-      
-      // 2. 启动 HRTIM Timer A (单次触发)
-      // 这会立即拉高 PA8 (EN_BRIDGE)，并开始计数
-      HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
+      // 1. 清除标志 (注意：现在要清除 CMP2 和 REP)
+      // __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_REP);
 
+      // 2. 启动 HRTIM
+      // HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
       // 3. 等待本轮测量完成 (350us 内)
       // 实际应用中可以去处理其他事情，这里简单延时确保不重入
       
