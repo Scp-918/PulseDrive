@@ -41,7 +41,8 @@ extern HRTIM_HandleTypeDef hhrtim1;
 void MX_HRTIM1_Init(void);
 
 void HAL_HRTIM_MspPostInit(HRTIM_HandleTypeDef *hhrtim);
-
+void HAL_HRTIM_MspDeInit(HRTIM_HandleTypeDef* hrtimHandle);
+void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hrtimHandle);
 /* USER CODE BEGIN Prototypes */
 
 /* USER CODE END Prototypes */

@@ -183,14 +183,14 @@ void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hrtimHandle)
 {
   if(hrtimHandle->Instance==HRTIM1)
   {
-  /* USER CODE BEGIN HRTIM1_MspInit 0 */
+    /* USER CODE BEGIN HRTIM1_MspInit 0 */
 
-  /* USER CODE END HRTIM1_MspInit 0 */
+    /* USER CODE END HRTIM1_MspInit 0 */
     /* Peripheral clock enable */
-    __HAL_RCC_HRTIM1_CLK_ENABLE(); // <--- 关键：开启 HRTIM 时钟
-  /* USER CODE BEGIN HRTIM1_MspInit 1 */
+    __HAL_RCC_HRTIM1_CLK_ENABLE(); // <--- 必须有这一句，否则所有HRTIM寄存器都写不进去
+    /* USER CODE BEGIN HRTIM1_MspInit 1 */
 
-  /* USER CODE END HRTIM1_MspInit 1 */
+    /* USER CODE END HRTIM1_MspInit 1 */
   }
 }
 /* USER CODE END 1 */

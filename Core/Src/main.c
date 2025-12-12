@@ -201,7 +201,7 @@ int main(void)
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);  // E3.3V
   HAL_Delay(50);
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET); // E4V
-  HAL_Delay(5000); // 等待电源稳定
+  HAL_Delay(2000); // 等待电源稳定
 
   // 2. AD4007 初始化
   char msg[64];
@@ -239,6 +239,7 @@ int main(void)
     sprintf(msg, "wrong\r\n");
     CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
   }
+  HAL_Delay(100); 
   // 开启中断
   // HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 1, 0);
   // HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
@@ -276,7 +277,7 @@ int main(void)
       // 确保循环周期至少 10ms
       sprintf(msg, "TMUX SUCCESS222\r\n");
       CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
-      HAL_Delay(10);
+      HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

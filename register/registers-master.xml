@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<moduletable>
+  <module name="HRTIM_Master" address="0x40016800">
+    <register name="MCR" address="0x40016800" size="32" value="0x00000000">
+      <bitfield name="CK_PSC" bitrange="[2:0]" value="0x00000000"></bitfield>
+      <bitfield name="CONT" bitrange="[3:3]" value="0x00000000"></bitfield>
+      <bitfield name="RETRIG" bitrange="[4:4]" value="0x00000000"></bitfield>
+      <bitfield name="HALF" bitrange="[5:5]" value="0x00000000"></bitfield>
+      <bitfield name="INTLVD" bitrange="[7:6]" value="0x00000000"></bitfield>
+      <bitfield name="SYNC_IN" bitrange="[9:8]" value="0x00000000"></bitfield>
+      <bitfield name="SYNCRSTM" bitrange="[10:10]" value="0x00000000"></bitfield>
+      <bitfield name="SYNCSTRTM" bitrange="[11:11]" value="0x00000000"></bitfield>
+      <bitfield name="SYNC_OUT" bitrange="[13:12]" value="0x00000000"></bitfield>
+      <bitfield name="SYNC_SRC" bitrange="[15:14]" value="0x00000000"></bitfield>
+      <bitfield name="MCEN" bitrange="[16:16]" value="0x00000000"></bitfield>
+      <bitfield name="TACEN" bitrange="[17:17]" value="0x00000000"></bitfield>
+      <bitfield name="TBCEN" bitrange="[18:18]" value="0x00000000"></bitfield>
+      <bitfield name="TCCEN" bitrange="[19:19]" value="0x00000000"></bitfield>
+      <bitfield name="TDCEN" bitrange="[20:20]" value="0x00000000"></bitfield>
+      <bitfield name="TECEN" bitrange="[21:21]" value="0x00000000"></bitfield>
+      <bitfield name="TFCEN" bitrange="[22:22]" value="0x00000000"></bitfield>
+      <bitfield name="DACSYNC" bitrange="[26:25]" value="0x00000000"></bitfield>
+      <bitfield name="PREEN" bitrange="[27:27]" value="0x00000000"></bitfield>
+      <bitfield name="MREPU" bitrange="[29:29]" value="0x00000000"></bitfield>
+      <bitfield name="BRSTDMA" bitrange="[31:30]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MISR" address="0x40016804" size="32" value="0x00000000">
+      <bitfield name="MCMP1" bitrange="[0:0]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP2" bitrange="[1:1]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP3" bitrange="[2:2]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP4" bitrange="[3:3]" value="0x00000000"></bitfield>
+      <bitfield name="MREP" bitrange="[4:4]" value="0x00000000"></bitfield>
+      <bitfield name="SYNC" bitrange="[5:5]" value="0x00000000"></bitfield>
+      <bitfield name="MUPD" bitrange="[6:6]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MICR" address="0x40016808" size="32" value="0x00000000">
+      <bitfield name="MCMP1C" bitrange="[0:0]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP2C" bitrange="[1:1]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP3C" bitrange="[2:2]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP4C" bitrange="[3:3]" value="0x00000000"></bitfield>
+      <bitfield name="MREPC" bitrange="[4:4]" value="0x00000000"></bitfield>
+      <bitfield name="SYNCC" bitrange="[5:5]" value="0x00000000"></bitfield>
+      <bitfield name="MUPDC" bitrange="[6:6]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MDIER" address="0x4001680c" size="32" value="0x00000000">
+      <bitfield name="MCMP1IE" bitrange="[0:0]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP2IE" bitrange="[1:1]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP3IE" bitrange="[2:2]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP4IE" bitrange="[3:3]" value="0x00000000"></bitfield>
+      <bitfield name="MREPIE" bitrange="[4:4]" value="0x00000000"></bitfield>
+      <bitfield name="SYNCIE" bitrange="[5:5]" value="0x00000000"></bitfield>
+      <bitfield name="MUPDIE" bitrange="[6:6]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP1DE" bitrange="[16:16]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP2DE" bitrange="[17:17]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP3DE" bitrange="[18:18]" value="0x00000000"></bitfield>
+      <bitfield name="MCMP4DE" bitrange="[19:19]" value="0x00000000"></bitfield>
+      <bitfield name="MREPDE" bitrange="[20:20]" value="0x00000000"></bitfield>
+      <bitfield name="SYNCDE" bitrange="[21:21]" value="0x00000000"></bitfield>
+      <bitfield name="MUPDDE" bitrange="[22:22]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MCNTR" address="0x40016810" size="32" value="0x00000000">
+      <bitfield name="MCNT" bitrange="[15:0]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MPER" address="0x40016814" size="32" value="0x0000ffdf">
+      <bitfield name="MPER" bitrange="[15:0]" value="0x0000ffdf"></bitfield>
+    </register>
+    <register name="MREP" address="0x40016818" size="32" value="0x00000000">
+      <bitfield name="MREP" bitrange="[7:0]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MCMP1R" address="0x4001681c" size="32" value="0x00000000">
+      <bitfield name="MCMP1" bitrange="[15:0]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MCMP2R" address="0x40016824" size="32" value="0x00000000">
+      <bitfield name="MCMP2" bitrange="[15:0]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MCMP3R" address="0x40016828" size="32" value="0x00000000">
+      <bitfield name="MCMP3" bitrange="[15:0]" value="0x00000000"></bitfield>
+    </register>
+    <register name="MCMP4R" address="0x4001682c" size="32" value="0x00000000">
+      <bitfield name="MCMP4" bitrange="[15:0]" value="0x00000000"></bitfield>
+    </register>
+  </module>
+</moduletable>
