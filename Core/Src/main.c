@@ -233,6 +233,18 @@ int main(void)
 
 
   MX_HRTIM1_Init();
+  // [强制修复 GPIO] 确保 PA8/PA9 复用为 HRTIM
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  
+  // PA8 -> HRTIM_CHA1, PA9 -> HRTIM_CHA2
+  GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;       // 复用推挽输出
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF13_HRTIM1; // 必须是 AF13
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  // 4. 启动 HRTIM 波形输出
   if (HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TA2) != HAL_OK)
   {
     Error_Handler();
@@ -255,10 +267,19 @@ int main(void)
       // 序列：EN高 -> 3us采样 -> 300us采样 -> EN低(自动)
       
       // 1. 清除标志 (注意：现在要清除 CMP2 和 REP)
-      // __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_REP);
+// 1. 清除标志位 (特别是 CMP 和 REP，防止上次的中断标志残留)
+      __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 
+                                HRTIM_TIM_IT_CMP1 | HRTIM_TIM_IT_CMP2 | 
+                                HRTIM_TIM_IT_CMP3 | HRTIM_TIM_IT_CMP4 | 
+                                HRTIM_TIM_IT_REP  | HRTIM_TIM_IT_UPD);
 
       // 2. 启动 HRTIM
-      // HAL_HRTIM_WaveformCountStart_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
+      if (HAL_HRTIM_WaveformCountStart(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A) != HAL_OK)
+      {
+          // 错误处理
+          sprintf(msg, "HRTIM wrong\r\n");
+          CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+      }
       // 3. 等待本轮测量完成 (350us 内)
       // 实际应用中可以去处理其他事情，这里简单延时确保不重入
       
