@@ -194,13 +194,10 @@ int main(void)
   // MX_USART1_UART_Init();
   // MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
-  // [新增 1] 暴力开启时钟，防止 MspInit 没跑
-  __HAL_RCC_HRTIM1_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE(); // 防止 GDB 读取 GPIOA 报错
   //初始化GPIO与通信
   MX_GPIO_Init();
   MX_SPI3_Init();
-  MX_USART1_UART_Init();
+  //MX_USART1_UART_Init();
   MX_USB_Device_Init();
 
   //初始化TMUX GPIO
