@@ -58,7 +58,8 @@
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern HRTIM_HandleTypeDef hhrtim1;
 /* USER CODE BEGIN EV */
-
+/* 添加一个外部全局变量用于测试 */
+volatile int32_t debug_isr_cnt = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -219,7 +220,7 @@ void USB_LP_IRQHandler(void)
 void HRTIM1_TIMA_IRQHandler(void)
 {
   /* USER CODE BEGIN HRTIM1_TIMA_IRQn 0 */
-
+  debug_isr_cnt++; // 测试用：每次进入中断，计数加一
   /* USER CODE END HRTIM1_TIMA_IRQn 0 */
   HAL_HRTIM_IRQHandler(&hhrtim1,HRTIM_TIMERINDEX_TIMER_A);
   /* USER CODE BEGIN HRTIM1_TIMA_IRQn 1 */

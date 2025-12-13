@@ -41,6 +41,7 @@ volatile uint8_t measure_done = 0;
 volatile int32_t num_3us = 0;
 volatile int32_t num_300us = 0;
 volatile uint8_t num_done = 0;
+extern volatile int32_t debug_isr_cnt;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -193,6 +194,9 @@ int main(void)
   // MX_USART1_UART_Init();
   // MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
+  // [新增 1] 暴力开启时钟，防止 MspInit 没跑
+  __HAL_RCC_HRTIM1_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE(); // 防止 GDB 读取 GPIOA 报错
   //初始化GPIO与通信
   MX_GPIO_Init();
   MX_SPI3_Init();
@@ -294,6 +298,10 @@ int main(void)
           sprintf(msg, "HRTIM wrong\r\n");
           CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
       }
+      HAL_Delay(1);
+      // [新增] 读取 HRTIM Timer A 的中断状态寄存器 (ISR)
+      // Bit 1 = CMP2, Bit 4 = REP
+      uint32_t isr_reg = hhrtim1.Instance->sTimerxRegs[HRTIM_TIMERINDEX_TIMER_A].TIMxISR;
       // 3. 等待本轮测量完成 (350us 内)
       // 实际应用中可以去处理其他事情，这里简单延时确保不重入
       
@@ -305,7 +313,13 @@ int main(void)
           // float v_3us = AD4007_ConvertToVoltage(adc_raw_3us);
           // float v_300us = AD4007_ConvertToVoltage(adc_raw_300us);
           // sprintf(msg, "T=3us: %.4f V | T=300us: %.4f V\r\n", v_3us, v_300us);
-          sprintf(msg, "num_3us: %d | num_300us: %d\r\n", num_3us, num_300us); //输出中断次数
+          sprintf(msg, "num_3us: %u | num_300us: %u\r\n", num_3us, num_300us); //输出中断次数
+          CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+          // HW_ISR: 硬件标志位 (如果 != 0，说明硬件确实产生了中断信号)
+          // DBG_CNT: 探针计数 (如果 HW_ISR!=0 但 DBG_CNT=0，说明 NVIC 表配置错了)
+          // USR_CNT: 用户计数 (如果 DBG_CNT涨 但 USR_CNT=0，说明 HAL 回调函数名写错了)
+          sprintf(msg, "ISR_REG: 0x%u | DBG_CNT: %u | USR_CNT: %u\r\n", 
+                  isr_reg, debug_isr_cnt, num_3us);
           CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
       }
 
