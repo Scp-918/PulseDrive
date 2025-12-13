@@ -261,6 +261,8 @@ int main(void)
     sprintf(msg, "wrong\r\n");
     CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
   }
+  // 相当于 Set Output Enable Register
+  hhrtim1.Instance->sCommonRegs.OENR |= (HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TA2);
 
   HAL_Delay(100); 
   // 开启中断
@@ -268,6 +270,8 @@ int main(void)
   // 优先级设为 1，既保证实时性，又不至于卡死 SysTick (优先级0)
   HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
+  // 宏原型通常是: __HAL_HRTIM_TIMER_ENABLE_IT(__HANDLE__, __TIMER__, __INTERRUPT__)
+  __HAL_HRTIM_TIMER_ENABLE_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_REP);
   uint32_t last_print_tick = 0;
   /* USER CODE END 2 */
 
