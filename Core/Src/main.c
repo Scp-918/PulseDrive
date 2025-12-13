@@ -37,6 +37,10 @@
 volatile int32_t adc_raw_3us = 0;
 volatile int32_t adc_raw_300us = 0;
 volatile uint8_t measure_done = 0;
+/* 全局变量用于存储 中断次数 */
+volatile int32_t num_3us = 0;
+volatile int32_t num_300us = 0;
+volatile uint8_t num_done = 0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,36 +61,34 @@ volatile uint8_t measure_done = 0;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+/**
+  * @brief  HRTIM 比较匹配回调 (处理第一次采样)
+  * 触发源: CMP2 (对应 3.5us 时刻)
+  */
 void HAL_HRTIM_TimerCompareCallback(HRTIM_HandleTypeDef * hhrtim, uint32_t TimerIdx)
 {
-  // if (TimerIdx == HRTIM_TIMERINDEX_TIMER_A)
-  // {
-  //   // 获取当前中断标志 
-  //   static uint8_t sample_index = 0;
-    
-  //   // 简单的状态机：每次启动设为 0，第一次中断是 3us，第二次是 300us
-  //   if (sample_index == 0) 
-  //   {
-  //       // 对应 CMP2 (3.5us) 触发
-  //       adc_raw_3us = AD4007_Read_SPI_Only();
-  //       sample_index = 1;
-  //   }
-  //   else
-  //   {
-  //       // 对应 CMP4 (300.5us) 触发
-  //       adc_raw_300us = AD4007_Read_SPI_Only();
-  //       sample_index = 0; // 重置
-  //       measure_done = 1; // 标记本轮完成
-  //   }
-  // }
+  if (TimerIdx == HRTIM_TIMERINDEX_TIMER_A)
+  {
+      // 此时是 3.5us，第一次 CNV 脉冲刚结束，ADC 转换完成
+      //adc_raw_3us = AD4007_Read_SPI_Only();
+      num_3us++;
+  }
 }
 
-/* 更好的方式是直接重写特定的 Event 回调如果 HAL 支持，或者检查 SR 寄存器 */
-/* 为了确保稳健，在启动 HRTIM 前重置 sample_index */
-void HRTIM_Reset_State(void)
+/**
+  * @brief  HRTIM 重复/周期事件回调 (处理第二次采样)
+  * 触发源: REP/PER (对应 300.5us 周期结束时刻)
+  */
+void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef * hhrtim, uint32_t TimerIdx)
 {
-    // 参数：Handle, TimerIdx, InterruptFlag
-    __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_CMP4);
+  if (TimerIdx == HRTIM_TIMERINDEX_TIMER_A)
+  {
+      // 此时是 300.5us，第二次 CNV 脉冲结束，EN_BRIDGE 自动拉低
+      //adc_raw_300us = AD4007_Read_SPI_Only();
+      //measure_done = 1; // 标记本轮数据准备就绪
+      num_300us++;
+      num_done=1;
+  }
 }
 
 /* USER CODE END PV */
@@ -196,7 +198,8 @@ int main(void)
   MX_SPI3_Init();
   MX_USART1_UART_Init();
   MX_USB_Device_Init();
-  // [初始化] TMUX GPIO
+
+  //初始化TMUX GPIO
   TMUX_Global_Init();
 
   // 1. 电源上电序列
@@ -205,7 +208,7 @@ int main(void)
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);  // E3.3V
   HAL_Delay(50);
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET); // E4V
-  HAL_Delay(2000); // 等待电源稳定
+  HAL_Delay(1000); // 等待电源稳定
 
   // 2. AD4007 初始化
   char msg[64];
@@ -260,8 +263,10 @@ int main(void)
 
   HAL_Delay(100); 
   // 开启中断
-  // HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 1, 0);
-  // HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
+  // 显式开启 HRTIM 中断 (这步不能省)
+  // 优先级设为 1，既保证实时性，又不至于卡死 SysTick (优先级0)
+  HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
   uint32_t last_print_tick = 0;
   /* USER CODE END 2 */
 
@@ -275,10 +280,12 @@ int main(void)
       
       // 1. 清除标志 (注意：现在要清除 CMP2 和 REP)
       // 1. 清除标志位 (特别是 CMP 和 REP，防止上次的中断标志残留)
+      // __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 
+      //                           HRTIM_TIM_IT_CMP1 | HRTIM_TIM_IT_CMP2 | 
+      //                           HRTIM_TIM_IT_CMP3 | HRTIM_TIM_IT_CMP4 | 
+      //                           HRTIM_TIM_IT_REP  | HRTIM_TIM_IT_UPD);
       __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 
-                                HRTIM_TIM_IT_CMP1 | HRTIM_TIM_IT_CMP2 | 
-                                HRTIM_TIM_IT_CMP3 | HRTIM_TIM_IT_CMP4 | 
-                                HRTIM_TIM_IT_REP  | HRTIM_TIM_IT_UPD);
+                                HRTIM_TIM_IT_CMP2 | HRTIM_TIM_IT_REP);
 
       // 2. 启动 HRTIM
       if (HAL_HRTIM_WaveformCountStart(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A) != HAL_OK)
@@ -291,21 +298,21 @@ int main(void)
       // 实际应用中可以去处理其他事情，这里简单延时确保不重入
       
       // // [打印任务] 每 1000ms 打印一次最近的数据
-      // if (current_tick - last_print_tick >= 1000)
-      // {
-      //     last_print_tick = current_tick;
+      if (current_tick - last_print_tick >= 1000)
+      {
+          last_print_tick = current_tick;
           
-      //     float v_3us = AD4007_ConvertToVoltage(adc_raw_3us);
-      //     float v_300us = AD4007_ConvertToVoltage(adc_raw_300us);
-          
-      //     sprintf(msg, "T=3us: %.4f V | T=300us: %.4f V\r\n", v_3us, v_300us);
-      //     CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
-      // }
+          // float v_3us = AD4007_ConvertToVoltage(adc_raw_3us);
+          // float v_300us = AD4007_ConvertToVoltage(adc_raw_300us);
+          // sprintf(msg, "T=3us: %.4f V | T=300us: %.4f V\r\n", v_3us, v_300us);
+          sprintf(msg, "num_3us: %d | num_300us: %d\r\n", num_3us, num_300us); //输出中断次数
+          CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
+      }
 
       // 确保循环周期至少 10ms
       sprintf(msg, "TMUX SUCCESS222\r\n");
       CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
-      HAL_Delay(100);
+      HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
