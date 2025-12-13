@@ -183,18 +183,22 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  // MX_GPIO_Init();
+  // // MX_HRTIM1_Init();
+  // // MX_I2C3_Init();
+  // // MX_SPI1_Init();
+  // MX_SPI3_Init();
+  // MX_USART1_UART_Init();
+  // MX_USB_Device_Init();
+  /* USER CODE BEGIN 2 */
+  //初始化GPIO与通信
   MX_GPIO_Init();
-  // MX_HRTIM1_Init();
-  // MX_I2C3_Init();
-  // MX_SPI1_Init();
   MX_SPI3_Init();
   MX_USART1_UART_Init();
   MX_USB_Device_Init();
-  /* USER CODE BEGIN 2 */
-  // [初始化] TMUX GPIO (确保 PA8 等引脚被正确配置为输出)
+  // [初始化] TMUX GPIO
   TMUX_Global_Init();
 
-  /* USER CODE BEGIN 2 */
   // 1. 电源上电序列
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);  // E5V
   HAL_Delay(50);
@@ -231,8 +235,6 @@ int main(void)
   sprintf(msg, "TMUX SUCCESS\r\n");
   CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
 
-
-  MX_HRTIM1_Init();
   // [强制修复 GPIO] 确保 PA8/PA9 复用为 HRTIM
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -244,13 +246,18 @@ int main(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF13_HRTIM1; // 必须是 AF13
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-  // 4. 启动 HRTIM 波形输出
+
+  // 4. HRTIM 初始化
+  MX_HRTIM1_Init();
+
+  // 5. 启动 HRTIM 波形输出
   if (HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TA2) != HAL_OK)
   {
     Error_Handler();
     sprintf(msg, "wrong\r\n");
     CDC_Transmit_Wait((uint8_t*)msg, strlen(msg));
   }
+
   HAL_Delay(100); 
   // 开启中断
   // HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 1, 0);
@@ -267,7 +274,7 @@ int main(void)
       // 序列：EN高 -> 3us采样 -> 300us采样 -> EN低(自动)
       
       // 1. 清除标志 (注意：现在要清除 CMP2 和 REP)
-// 1. 清除标志位 (特别是 CMP 和 REP，防止上次的中断标志残留)
+      // 1. 清除标志位 (特别是 CMP 和 REP，防止上次的中断标志残留)
       __HAL_HRTIM_TIMER_CLEAR_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 
                                 HRTIM_TIM_IT_CMP1 | HRTIM_TIM_IT_CMP2 | 
                                 HRTIM_TIM_IT_CMP3 | HRTIM_TIM_IT_CMP4 | 
